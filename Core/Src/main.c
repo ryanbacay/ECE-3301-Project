@@ -103,11 +103,25 @@ static void update_display();  		//Alexander
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-	if (GPIO_Pin == User_Button_Pin) {
+	if (GPIO_Pin->Instance == User_Button_Pin) {
 		Display_State = !Display_State;
 	}
 }
 
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+	// 1 ms timer
+	if (htim->Instance == TIM2) {
+		DisplayRefresh_tick++;
+		//fill as needed
+
+	}
+
+	// 100 us timer
+	else if (htim->Instance == TIM3) {
+		//fill as needed
+
+	}
+}
 
 static void read_level() {
 
@@ -163,10 +177,7 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-	SysTick->CTRL = 0;
-	SysTick->LOAD = (SystemCoreClock / 1000) - 1;
-	SysTick->VAL = 0;
-	SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk | SysTick_CTRL_TICKINT_Msk | SysTick_CTRL_ENABLE_Msk;
+
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -185,6 +196,8 @@ int main(void)
   MX_TIM3_Init();
   MX_IWDG_Init();
   /* USER CODE BEGIN 2 */
+	HAL_TIM_Base_Start_IT(&htim2);
+	HAL_TIM_Base_Start_IT(&htim3);
 
   /* USER CODE END 2 */
 
@@ -247,7 +260,7 @@ int main(void)
 			DisplayRefresh_tick = 0;
 		}
 
-		HAL_IWDG_Refresh(&hiwdg);
+		HAL_IWDG_Refresh(&hiwdg); //needs to be kicked every 250ms
 	}
 
   /* USER CODE END 3 */
@@ -462,9 +475,9 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 169;
+  htim2.Init.Prescaler = 0;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 99;
+  htim2.Init.Period = 169999;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -509,7 +522,7 @@ static void MX_TIM3_Init(void)
   htim3.Instance = TIM3;
   htim3.Init.Prescaler = 0;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 65535;
+  htim3.Init.Period = 16999;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
