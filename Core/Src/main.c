@@ -37,6 +37,7 @@
 #define SENSOR_RATE 100 			// change
 #define CALCULATION_RATE 100 		// change
 #define FRAMEGENERATION_RATE 100 	// change
+#define SLEEP_TIMER 20000
 
 #define REFRESH_RATE 65 // 1/65ms ~ 15 FPS
 
@@ -68,7 +69,12 @@ TIM_HandleTypeDef htim3;
 
 /* USER CODE BEGIN PV */
 volatile uint8_t Display_State = LEVEL_MODE;
+volatile uint8_t Sleep_Mode = 0;
+
+
+
 volatile uint32_t Display_tick = 0;
+volatile uint32_t Sleep_tick = 0;
 volatile uint32_t Sensor_tick = 0;
 volatile uint32_t Calculate_tick = 0;
 volatile uint32_t DisplayGen_tick = 0;
@@ -125,6 +131,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	// 1 ms timer
 	if (htim->Instance == TIM2) {
 		DisplayRefresh_tick++;
+		Sleep_tick++;
 		//fill as needed
 
 	}
@@ -258,6 +265,10 @@ int main(void)
 			Data_Ready=0;
 		}
 
+		if(Sleep_tick >= SLEEP_TIMER){
+			Sleep_Mode = 1;
+		}
+		else if (!Sleep_Mode){
 		if (Calculate_tick >= CALCULATION_RATE)
 		{
 			if (Display_State == LEVEL_MODE) {
@@ -282,7 +293,7 @@ int main(void)
 			update_display();
 			DisplayRefresh_tick = 0;
 		}
-
+		}
 		HAL_IWDG_Refresh(&hiwdg); //needs to be kicked every 250ms
 	}
 
