@@ -61,8 +61,8 @@ all: main-build
 main-build: ECE\ 3301\ Project.elf secondary-outputs
 
 # Tool invocations
-ECE\ 3301\ Project.elf ECE\ 3301\ Project.map: $(OBJS) $(USER_OBJS) C:\Users\pcmas\Sync\workspace_1.19.0\ECE\ 3301\ Project\STM32G431KBTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "ECE 3301 Project.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\pcmas\Sync\workspace_1.19.0\ECE 3301 Project\STM32G431KBTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="ECE 3301 Project.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+ECE\ 3301\ Project.elf ECE\ 3301\ Project.map: $(OBJS) $(USER_OBJS) C:\Users\pcmas\STM32CubeIDE\workspace_1.19.0\ECE\ 3301\ Project\STM32G431KBTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "ECE 3301 Project.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\pcmas\STM32CubeIDE\workspace_1.19.0\ECE 3301 Project\STM32G431KBTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="ECE 3301 Project.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

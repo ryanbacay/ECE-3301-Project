@@ -60,6 +60,9 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define Data_Ready_Pin GPIO_PIN_0
+#define Data_Ready_GPIO_Port GPIOA
+#define Data_Ready_EXTI_IRQn EXTI0_IRQn
 #define Display_CS_Pin GPIO_PIN_6
 #define Display_CS_GPIO_Port GPIOA
 #define User_Button_Pin GPIO_PIN_10

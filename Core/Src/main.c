@@ -74,6 +74,16 @@ volatile uint32_t Calculate_tick = 0;
 volatile uint32_t DisplayGen_tick = 0;
 volatile uint32_t DisplayRefresh_tick = 0;
 
+
+volatile uint16_t headingVector[2]= {0};
+volatile uint16_t gyroVector[2]= {0};
+volatile uint16_t gravityVector[2]= {0};
+
+volatile uint8_t Data_Ready = 0;
+
+
+
+
 uint8_t frame_buffer[SCREEN_WIDTH * SCREEN_HEIGHT];
 
 
@@ -91,11 +101,11 @@ static void MX_IWDG_Init(void);
 /* USER CODE BEGIN PFP */
 
 static void read_level(); 			//Terry
-static void read_angle(); 			//Terry
+static void read_heading(); 		//Terry
 static void calculate_level(); 	 	//Ryan
 static void calculate_compass(); 	//Brady
 static void generate_levelframe(); 	//Ethan
-static void generate_angleframe(); 	//Ethan
+static void generate_headingframe();//Ethan
 static void update_display();  		//Alexander
 
 /* USER CODE END PFP */
@@ -103,8 +113,11 @@ static void update_display();  		//Alexander
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-	if (GPIO_Pin->Instance == User_Button_Pin) {
+	if (GPIO_Pin == User_Button_Pin) {
 		Display_State = !Display_State;
+	}
+	else if (GPIO_Pin == Data_Ready_Pin){
+	Data_Ready=1;
 	}
 }
 
@@ -125,15 +138,25 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 
 static void read_level() {
 
+	//run the sensor in 9DOF fusion mode
+	//pwetty pwease enable ACC_BSX_DRDY interrupt, and clear at end of data read
+
+	//format vector info as gravityVector[]= {x,y,z};
+
+
+
 }
 
 
-static void read_angle() {
+static void read_heading() {
 
 }
 
 
 static void calculate_level() {
+
+	//lowkey the sensor does most of the vector calcs by itself
+
 
 }
 
@@ -148,7 +171,7 @@ static void generate_levelframe() {
 }
 
 
-static void generate_angleframe() {
+static void generate_headingframe() {
 
 }
 
@@ -223,16 +246,16 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
-		if (Sensor_tick >= SENSOR_RATE)
+		if (Data_Ready)
 		{
 			if (Display_State == LEVEL_MODE) {
 				read_level();
 			} else if (Display_State == COMPASS_MODE) {
-				read_angle();
+				read_heading();
 			} else {
 				Display_State = LEVEL_MODE;
 			}
-			Sensor_tick = 0;
+			Data_Ready=0;
 		}
 
 		if (Calculate_tick >= CALCULATION_RATE)
@@ -248,7 +271,7 @@ int main(void)
 		if (DisplayGen_tick >= FRAMEGENERATION_RATE)
 		{
 			if (Display_State == LEVEL_MODE) {
-				generate_angleframe();
+				generate_headingframe();
 			} else if (Display_State == COMPASS_MODE) {
 				generate_levelframe();
 			}
@@ -565,6 +588,12 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(Display_CS_GPIO_Port, Display_CS_Pin, GPIO_PIN_RESET);
 
+  /*Configure GPIO pins : Data_Ready_Pin User_Button_Pin */
+  GPIO_InitStruct.Pin = Data_Ready_Pin|User_Button_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
   /*Configure GPIO pin : Display_CS_Pin */
   GPIO_InitStruct.Pin = Display_CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -572,13 +601,10 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(Display_CS_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : User_Button_Pin */
-  GPIO_InitStruct.Pin = User_Button_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-  HAL_GPIO_Init(User_Button_GPIO_Port, &GPIO_InitStruct);
-
   /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+
   HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
