@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include <string.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -267,6 +268,9 @@ int main(void)
 
 		if(Sleep_tick >= SLEEP_TIMER){
 			Sleep_Mode = 1;
+			memset(frame_buffer, 0, sizeof(frame_buffer));
+			update_display();
+
 		}
 		else if (!Sleep_Mode){
 		if (Calculate_tick >= CALCULATION_RATE)
