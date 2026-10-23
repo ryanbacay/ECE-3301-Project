@@ -77,6 +77,9 @@ volatile uint16_t gravityVector[2] = { 0 };
 
 volatile uint8_t Data_Ready = 0;
 
+volatile float compassHeading = 0.0f;
+volatile uint8_t compassDirection = 0;
+
 
 uint8_t frame_buffer[SCREEN_WIDTH * SCREEN_HEIGHT];
 
@@ -150,6 +153,62 @@ static void calculate_level() {
 }
 
 static void calculate_compass() {
+
+	// Direction values:
+	// 0 = North
+	// 1 = North-east
+	// 2 = East
+	// 3 = South-east
+	// 4 = South
+	// 5 = South-west
+	// 6 = West
+	// 7 = North-west
+
+
+	uint16_t rawHeading = headingVector[0];  //read heading
+
+	compassHeading = rawHeading / 16.0f;  //Conversion from BNO055 to degrees
+
+	if (compassHeading >= 360.0f)	// keeps compassHeading between 0 and 360
+	    {
+	        compassHeading -= 360.0f;
+
+	    }
+	if (compassHeading >= 337.5f ||
+	        compassHeading < 22.5f)
+	    {
+	        compassDirection = 0;  // North
+	    }
+	    else if (compassHeading < 67.5f)
+	    {
+	        compassDirection = 1;  // North-east
+	    }
+	    else if (compassHeading < 112.5f)
+	    {
+	        compassDirection = 2;  // East
+	    }
+	    else if (compassHeading < 157.5f)
+	    {
+	        compassDirection = 3;  // South-east
+	    }
+	    else if (compassHeading < 202.5f)
+	    {
+	        compassDirection = 4;  // South
+	    }
+	    else if (compassHeading < 247.5f)
+	    {
+	        compassDirection = 5;  // South-west
+	    }
+	    else if (compassHeading < 292.5f)
+	    {
+	        compassDirection = 6;  // West
+	    }
+	    else
+	    {
+	        compassDirection = 7;  // Northwest
+	    }
+
+
 
 }
 
