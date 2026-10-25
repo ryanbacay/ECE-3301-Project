@@ -60,11 +60,14 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define Data_Ready_Pin GPIO_PIN_0
-#define Data_Ready_GPIO_Port GPIOA
-#define Data_Ready_EXTI_IRQn EXTI0_IRQn
-#define Display_CS_Pin GPIO_PIN_6
+#define OLED_RST_Pin GPIO_PIN_0
+#define OLED_RST_GPIO_Port GPIOA
+#define DC_Pin_Pin GPIO_PIN_1
+#define DC_Pin_GPIO_Port GPIOA
+#define Display_CS_Pin GPIO_PIN_4
 #define Display_CS_GPIO_Port GPIOA
+#define Display_CSA6_Pin GPIO_PIN_6
+#define Display_CSA6_GPIO_Port GPIOA
 #define User_Button_Pin GPIO_PIN_10
 #define User_Button_GPIO_Port GPIOA
 #define User_Button_EXTI_IRQn EXTI15_10_IRQn
@@ -74,6 +77,9 @@ void Error_Handler(void);
 #define T_SWCLK_GPIO_Port GPIOA
 #define T_SWO_Pin GPIO_PIN_3
 #define T_SWO_GPIO_Port GPIOB
+#define Data_Ready_Pin GPIO_PIN_6
+#define Data_Ready_GPIO_Port GPIOB
+#define Data_Ready_EXTI_IRQn EXTI9_5_IRQn
 
 /* USER CODE BEGIN Private defines */
 
