@@ -19,6 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include <string.h>
+#include <bno055.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -85,6 +86,8 @@ volatile uint8_t compassDirection = 0;
 
 uint8_t frame_buffer[SCREEN_WIDTH * SCREEN_HEIGHT / 2];
 
+BNO055_Data orientation;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -136,7 +139,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 }
 
 static void read_level() {
-
+	if (BNO055_Read(&hi2c1, &orientation) == HAL_OK)
+	    {
+	        // orientation.roll_deg
+	        // orientation.pitch_deg
+	        // orientation.heading_deg
+	    }
 	//run the sensor in 9DOF fusion mode
 	//pwetty pwease enable ACC_BSX_DRDY interrupt, and clear at end of data read
 
@@ -145,7 +153,11 @@ static void read_level() {
 }
 
 static void read_heading() {
-
+	if (BNO055_Read(&hi2c1, &orientation) == HAL_OK)
+	    {
+	        headingVector[0] =
+	            (uint16_t)(orientation.heading_deg * 16.0f);
+	    }
 }
 
 static void calculate_level() {
@@ -262,8 +274,15 @@ int main(void)
   MX_CORDIC_Init();
   MX_TIM2_Init();
   MX_TIM3_Init();
-  MX_IWDG_Init();
+
   /* USER CODE BEGIN 2 */
+  if (BNO055_Init(&hi2c1) != HAL_OK)
+  {
+      Error_Handler();
+  }
+
+  MX_IWDG_Init(); // Moved in front of BNOO055_Init to prevent watchdog reset
+
 	HAL_TIM_Base_Start_IT(&htim2);
 	HAL_TIM_Base_Start_IT(&htim3);
 
@@ -313,6 +332,10 @@ int main(void)
 				}
 			} else {
 				Display_State = LEVEL_MODE;
+			}
+			if (BNO055_ClearInterrupt(&hi2c1) != HAL_OK)
+			{
+			    Error_Handler();
 			}
 		}
 		if ((Sleep_tick >= SLEEP_TIMER) && !Sleep_Mode) {
