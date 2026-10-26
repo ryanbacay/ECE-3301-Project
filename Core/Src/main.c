@@ -32,8 +32,8 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define LEVEL_MODE 1
-#define COMPASS_MODE 2
+#define LEVEL_MODE 0
+#define COMPASS_MODE 1
 
 #define SLEEP_TIMER 20000
 
