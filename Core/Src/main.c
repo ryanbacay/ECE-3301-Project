@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include <string.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -38,8 +39,8 @@
 
 #define REFRESH_RATE 65 // 1/65ms ~ 15 FPS
 
-#define SCREEN_WIDTH  128
-#define SCREEN_HEIGHT 128
+#define SCREEN_WIDTH  240
+#define SCREEN_HEIGHT 240
 
 /* USER CODE END PD */
 
@@ -82,7 +83,7 @@ volatile float compassHeading = 0.0f;
 volatile uint8_t compassDirection = 0;
 
 
-uint8_t frame_buffer[SCREEN_WIDTH * SCREEN_HEIGHT];
+uint8_t frame_buffer[SCREEN_WIDTH * SCREEN_HEIGHT / 2];
 
 /* USER CODE END PV */
 
@@ -297,7 +298,7 @@ int main(void)
 			if (Display_State == LEVEL_MODE) {
 				read_level();
 				calculate_level();
-				if (DisplayRSefresh_tick >= REFRESH_RATE) {
+				if (DisplayRefresh_tick >= REFRESH_RATE) {
 					generate_levelframe();
 					update_display();
 					DisplayRefresh_tick = 0;
