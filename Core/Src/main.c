@@ -20,6 +20,7 @@
 #include "main.h"
 #include <string.h>
 #include <bno055.h>
+#include <math.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -171,7 +172,7 @@ static void calculate_level() {
 	//x-axis
 	tiltX = atan2f(gy, sqrtf(gx * gx + gz * gz))* (180.0f / 3.14159265f);
 	//y-axis
-	tilty = atan2f(-gx, sqrtf(gy * gy * gz *gz)) *(180.0f / 3.14159265f);
+	tiltY = atan2f(-gx, sqrtf(gy * gy * gz *gz)) *(180.0f / 3.14159265f);
 
 
 
@@ -193,9 +194,9 @@ static void calculate_compass() {
 	// 7 = North-west
 
 
-	uint16_t rawHeading = headingVector[0];  //read heading
+	uint16_t Heading = headingVector[0];  //read heading
 
-	compassHeading = rawHeading / 16.0f;  //Conversion from BNO055 to degrees
+	compassHeading = Heading;
 
 	if (compassHeading >= 360.0f)	// keeps compassHeading between 0 and 360
 	    {
@@ -290,6 +291,8 @@ int main(void)
   MX_TIM3_Init();
 
   /* USER CODE BEGIN 2 */
+
+
   if (BNO055_Init(&hi2c1) != HAL_OK)
   {
       Error_Handler();
