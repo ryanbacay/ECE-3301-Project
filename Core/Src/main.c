@@ -76,12 +76,14 @@ volatile uint32_t DisplayRefresh_tick = 0;
 volatile uint16_t AccelVector[2] = { 0 };
 volatile uint16_t headingVector[2] = { 0 }; // = {heading, roll, pitch}
 volatile uint16_t gyroVector[2] = { 0 };
-volatile uint16_t gravityVector[2] = { 0 };
+volatile uint16_t gravityVector[3] = { 0 };
 
 volatile uint8_t Data_Ready = 0;
 
 volatile float compassHeading = 0.0f;
 volatile uint8_t compassDirection = 0;
+volatile float tiltX = 0.0f;
+volatile float tiltY = 0.0f;
 
 
 uint8_t frame_buffer[SCREEN_WIDTH * SCREEN_HEIGHT / 2];
@@ -161,6 +163,18 @@ static void read_heading() {
 }
 
 static void calculate_level() {
+
+	float gx = gravityVector[0] / 100.0f;
+	float gy = gravityVector[1] / 100.0f;
+	float gz = gravityVector[2] / 100.0f;
+
+	//x-axis
+	tiltX = atan2f(gy, sqrtf(gx * gx + gz * gz))* (180.0f / 3.14159265f);
+	//y-axis
+	tilty = atan2f(-gx, sqrtf(gy * gy * gz *gz)) *(180.0f / 3.14159265f);
+
+
+
 
 	//lowkey the sensor does most of the vector calcs by itself
 
