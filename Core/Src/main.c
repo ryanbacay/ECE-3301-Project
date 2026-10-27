@@ -198,11 +198,7 @@ static void calculate_compass() {
 
 	compassHeading = Heading;
 
-	if (compassHeading >= 360.0f)	// keeps compassHeading between 0 and 360
-	    {
-	        compassHeading -= 360.0f;
 
-	    }
 	if (compassHeading >= 337.5f ||
 	        compassHeading < 22.5f)
 	    {
