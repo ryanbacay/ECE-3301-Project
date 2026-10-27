@@ -159,7 +159,7 @@ static void read_heading() {
 	if (BNO055_Read(&hi2c1, &orientation) == HAL_OK)
 	    {
 	        headingVector[0] =
-	            (uint16_t)(orientation.heading_deg * 16.0f);
+	            (uint16_t)(orientation.heading_deg);
 	    }
 }
 
