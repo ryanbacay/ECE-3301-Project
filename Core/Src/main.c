@@ -18,9 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include <string.h>
-#include <bno055.h>
-#include <math.h>
+#include "bno055.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -40,6 +38,10 @@
 #define SLEEP_TIMER 20000
 
 #define REFRESH_RATE 65 // 1/65ms ~ 15 FPS
+
+/* BEGIN TELEMETRY: remove this block and its use in the main loop to disable. */
+#define TELEMETRY_PERIOD_MS 500U
+/* END TELEMETRY */
 
 #define SCREEN_WIDTH  240
 #define SCREEN_HEIGHT 240
@@ -61,7 +63,7 @@ I2C_HandleTypeDef hi2c1;
 
 IWDG_HandleTypeDef hiwdg;
 
-SPI_HandleTypeDef hspi1;
+SPI_HandleTypeDef hspi2;
 
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
@@ -97,11 +99,11 @@ BNO055_Data orientation;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_I2C1_Init(void);
-static void MX_SPI1_Init(void);
 static void MX_CORDIC_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_IWDG_Init(void);
+static void MX_SPI2_Init(void);
 /* USER CODE BEGIN PFP */
 
 static void read_level(); 			 //Terry
@@ -281,28 +283,53 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_I2C1_Init();
-  MX_SPI1_Init();
   MX_CORDIC_Init();
   MX_TIM2_Init();
   MX_TIM3_Init();
-
+  //MX_IWDG_Init();
+  MX_SPI2_Init();
   /* USER CODE BEGIN 2 */
 
+  /* Initialize COM1 port (115200, 8 bits (7-bit data + 1 stop bit), no parity */
+  BspCOMInit.BaudRate   = 115200;
+  BspCOMInit.WordLength = COM_WORDLENGTH_8B;
+  BspCOMInit.StopBits   = COM_STOPBITS_1;
+  BspCOMInit.Parity     = COM_PARITY_NONE;
+  BspCOMInit.HwFlowCtl  = COM_HWCONTROL_NONE;
+  if (BSP_COM_Init(COM1, &BspCOMInit) != BSP_ERROR_NONE)
+  {
+    Error_Handler();
+  }
+
+  /* BEGIN TELEMETRY: remove this line with the other telemetry blocks. */
+  printf("VCOM online\r\n");
+  /* END TELEMETRY */
+
+  /* BEGIN I2C TEST: remove this block after the sensor bus is verified. */
+  uint8_t test_chip_id = 0;
+  HAL_StatusTypeDef test_status = BNO055_I2C_Test(&hi2c1, &test_chip_id);
+  printf("I2C test: %s, chip ID=0x%02X, error=0x%08lX\r\n",
+         test_status == HAL_OK ? "OK" : "FAIL", test_chip_id,
+         (unsigned long)HAL_I2C_GetError(&hi2c1));
+  /* END I2C TEST */
 
   if (BNO055_Init(&hi2c1) != HAL_OK)
   {
+      printf("BNO055 init failed, I2C error=0x%08lX\r\n",
+             (unsigned long)HAL_I2C_GetError(&hi2c1));
       Error_Handler();
   }
+  printf("BNO055 init OK\r\n");
 
-  MX_IWDG_Init(); // Moved in front of BNOO055_Init to prevent watchdog reset
+ // MX_IWDG_Init(); // Moved in front of BNOO055_Init to prevent watchdog reset
 
 	HAL_TIM_Base_Start_IT(&htim2);
 	HAL_TIM_Base_Start_IT(&htim3);
 
   /* USER CODE END 2 */
 
-  /* Initialize leds */
-  BSP_LED_Init(LED_GREEN);
+  /* Do not call BSP_LED_Init here: USE_NUCLEO_64 maps the LED to PA5,
+     which shares SDA/PB7 through SB2 on the NUCLEO-G431KB. */
 
   /* Initialize COM1 port (115200, 8 bits (7-bit data + 1 stop bit), no parity */
   BspCOMInit.BaudRate   = 115200;
@@ -318,6 +345,9 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 	while (1) {
+		/* BEGIN TELEMETRY: periodic angle output over the USB VCOM port. */
+		static uint32_t telemetry_last_tick = 0;
+		/* END TELEMETRY */
 
     /* USER CODE END WHILE */
 
@@ -351,13 +381,36 @@ int main(void)
 			    Error_Handler();
 			}
 		}
+		/* BEGIN TELEMETRY: remove this block to disable angle output. */
+		if ((HAL_GetTick() - telemetry_last_tick) >= TELEMETRY_PERIOD_MS) {
+			telemetry_last_tick = HAL_GetTick();
+			/* Poll directly so telemetry also works without the INT connection. */
+			if (BNO055_Read(&hi2c1, &orientation) != HAL_OK) {
+				printf("ANGLE read failed, I2C error=0x%08lX\r\n",
+				       (unsigned long)HAL_I2C_GetError(&hi2c1));
+				continue;
+			}
+			int32_t heading_cdeg = (int32_t)lroundf(orientation.heading_deg * 100.0f);
+			int32_t roll_cdeg = (int32_t)lroundf(orientation.roll_deg * 100.0f);
+			int32_t pitch_cdeg = (int32_t)lroundf(orientation.pitch_deg * 100.0f);
+			uint32_t heading_abs = (uint32_t)(heading_cdeg < 0 ? -heading_cdeg : heading_cdeg);
+			uint32_t roll_abs = (uint32_t)(roll_cdeg < 0 ? -roll_cdeg : roll_cdeg);
+			uint32_t pitch_abs = (uint32_t)(pitch_cdeg < 0 ? -pitch_cdeg : pitch_cdeg);
+
+			printf("ANGLES H=%s%lu.%02lu R=%s%lu.%02lu P=%s%lu.%02lu deg\r\n",
+			       heading_cdeg < 0 ? "-" : "", (unsigned long)(heading_abs / 100U), (unsigned long)(heading_abs % 100U),
+			       roll_cdeg < 0 ? "-" : "", (unsigned long)(roll_abs / 100U), (unsigned long)(roll_abs % 100U),
+			       pitch_cdeg < 0 ? "-" : "", (unsigned long)(pitch_abs / 100U), (unsigned long)(pitch_abs % 100U));
+			telemetry_last_tick = HAL_GetTick();
+		}
+		/* END TELEMETRY */
 		if ((Sleep_tick >= SLEEP_TIMER) && !Sleep_Mode) {
 			Sleep_Mode = 1;
 			memset(frame_buffer, 0, sizeof(frame_buffer));
 			update_display();
 		}
 
-		HAL_IWDG_Refresh(&hiwdg); //needs to be kicked every 250ms
+		//HAL_IWDG_Refresh(&hiwdg); //needs to be kicked every 250ms
 	}
 
   /* USER CODE END 3 */
@@ -452,7 +505,7 @@ static void MX_I2C1_Init(void)
 
   /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
-  hi2c1.Init.Timing = 0x40B285C2;
+  hi2c1.Init.Timing = 0x509170A3;
   hi2c1.Init.OwnAddress1 = 0;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
@@ -467,7 +520,7 @@ static void MX_I2C1_Init(void)
 
   /** Configure Analogue filter
   */
-  if (HAL_I2CEx_ConfigAnalogFilter(&hi2c1, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
+  if (HAL_I2CEx_ConfigAnalogFilter(&hi2c1, I2C_ANALOGFILTER_DISABLE) != HAL_OK)
   {
     Error_Handler();
   }
@@ -514,42 +567,42 @@ static void MX_IWDG_Init(void)
 }
 
 /**
-  * @brief SPI1 Initialization Function
+  * @brief SPI2 Initialization Function
   * @param None
   * @retval None
   */
-static void MX_SPI1_Init(void)
+static void MX_SPI2_Init(void)
 {
 
-  /* USER CODE BEGIN SPI1_Init 0 */
+  /* USER CODE BEGIN SPI2_Init 0 */
 
-  /* USER CODE END SPI1_Init 0 */
+  /* USER CODE END SPI2_Init 0 */
 
-  /* USER CODE BEGIN SPI1_Init 1 */
+  /* USER CODE BEGIN SPI2_Init 1 */
 
-  /* USER CODE END SPI1_Init 1 */
-  /* SPI1 parameter configuration*/
-  hspi1.Instance = SPI1;
-  hspi1.Init.Mode = SPI_MODE_MASTER;
-  hspi1.Init.Direction = SPI_DIRECTION_1LINE;
-  hspi1.Init.DataSize = SPI_DATASIZE_4BIT;
-  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
-  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
-  hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_4;
-  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
-  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
-  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
-  hspi1.Init.CRCPolynomial = 7;
-  hspi1.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
-  hspi1.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
-  if (HAL_SPI_Init(&hspi1) != HAL_OK)
+  /* USER CODE END SPI2_Init 1 */
+  /* SPI2 parameter configuration*/
+  hspi2.Instance = SPI2;
+  hspi2.Init.Mode = SPI_MODE_MASTER;
+  hspi2.Init.Direction = SPI_DIRECTION_1LINE;
+  hspi2.Init.DataSize = SPI_DATASIZE_4BIT;
+  hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi2.Init.NSS = SPI_NSS_SOFT;
+  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_128;
+  hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi2.Init.CRCPolynomial = 7;
+  hspi2.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
+  hspi2.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
+  if (HAL_SPI_Init(&hspi2) != HAL_OK)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN SPI1_Init 2 */
+  /* USER CODE BEGIN SPI2_Init 2 */
 
-  /* USER CODE END SPI1_Init 2 */
+  /* USER CODE END SPI2_Init 2 */
 
 }
 
@@ -656,11 +709,15 @@ static void MX_GPIO_Init(void)
   /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOF_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, OLED_RST_Pin|DC_Pin_Pin|Display_CS_Pin|Display_CSA6_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, OLED_RST_Pin|DC_Pin_Pin|Display_CS_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(Display_CSB0_GPIO_Port, Display_CSB0_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : OLED_RST_Pin DC_Pin_Pin */
   GPIO_InitStruct.Pin = OLED_RST_Pin|DC_Pin_Pin;
@@ -669,12 +726,19 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : Display_CS_Pin Display_CSA6_Pin */
-  GPIO_InitStruct.Pin = Display_CS_Pin|Display_CSA6_Pin;
+  /*Configure GPIO pin : Display_CS_Pin */
+  GPIO_InitStruct.Pin = Display_CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  HAL_GPIO_Init(Display_CS_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : Display_CSB0_Pin */
+  GPIO_InitStruct.Pin = Display_CSB0_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(Display_CSB0_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : User_Button_Pin */
   GPIO_InitStruct.Pin = User_Button_Pin;

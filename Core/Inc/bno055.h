@@ -7,6 +7,7 @@ typedef struct {
     uint8_t calibration; /* Bits 7:6 system, 5:4 gyro, 3:2 accel, 1:0 mag. */
 } BNO055_Data;
 HAL_StatusTypeDef BNO055_Init(I2C_HandleTypeDef *bus);
+HAL_StatusTypeDef BNO055_I2C_Test(I2C_HandleTypeDef *bus, uint8_t *chip_id);
 HAL_StatusTypeDef BNO055_Read(I2C_HandleTypeDef *bus, BNO055_Data *out);
 HAL_StatusTypeDef BNO055_ClearInterrupt(I2C_HandleTypeDef *bus);
 #endif

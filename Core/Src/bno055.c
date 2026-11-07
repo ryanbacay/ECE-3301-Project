@@ -23,6 +23,15 @@ static int16_t signed_word(const uint8_t *p)
     return (int16_t)((uint16_t)p[0] | ((uint16_t)p[1] << 8));
 }
 
+HAL_StatusTypeDef BNO055_I2C_Test(I2C_HandleTypeDef *bus, uint8_t *chip_id)
+{
+    /* Write the page register, then read the chip ID in a second transaction. */
+    if (write_reg(bus, 0x07, 0x00) != HAL_OK)
+        return HAL_ERROR;
+
+    return read_reg(bus, 0x00, chip_id, 1);
+}
+
 HAL_StatusTypeDef BNO055_Init(I2C_HandleTypeDef *bus)
 {
     uint8_t id = 0;

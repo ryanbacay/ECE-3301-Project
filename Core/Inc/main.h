@@ -66,8 +66,8 @@ void Error_Handler(void);
 #define DC_Pin_GPIO_Port GPIOA
 #define Display_CS_Pin GPIO_PIN_4
 #define Display_CS_GPIO_Port GPIOA
-#define Display_CSA6_Pin GPIO_PIN_6
-#define Display_CSA6_GPIO_Port GPIOA
+#define Display_CSB0_Pin GPIO_PIN_0
+#define Display_CSB0_GPIO_Port GPIOB
 #define User_Button_Pin GPIO_PIN_10
 #define User_Button_GPIO_Port GPIOA
 #define User_Button_EXTI_IRQn EXTI15_10_IRQn

@@ -1,0 +1,7 @@
+../Core/Src/bno055.c:5:26:read_reg	1
+../Core/Src/bno055.c:12:26:write_reg	1
+../Core/Src/bno055.c:21:16:signed_word	1
+../Core/Src/bno055.c:26:19:BNO055_I2C_Test	2
+../Core/Src/bno055.c:35:19:BNO055_Init	12
+../Core/Src/bno055.c:78:19:BNO055_Read	4
+../Core/Src/bno055.c:95:19:BNO055_ClearInterrupt	1
