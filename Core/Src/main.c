@@ -77,9 +77,11 @@ volatile uint32_t DisplayRefresh_tick = 0;
 
 
 volatile uint16_t AccelVector[2] = { 0 };
-volatile uint16_t headingVector[2] = { 0 }; // = {heading, roll, pitch}
 volatile uint16_t gyroVector[2] = { 0 };
-volatile uint16_t gravityVector[3] = { 0 };
+volatile uint16_t gravityVector[3] = { 0 }; //dunno if we need this
+
+volatile uint16_t headingVector[2] = { 0 }; //compass vectors
+volatile uint16_t levelVector[2] = { 0 };  //level vectors
 
 volatile uint8_t Data_Ready = 0;
 
@@ -87,6 +89,8 @@ volatile float compassHeading = 0.0f;
 volatile uint8_t compassDirection = 0;
 volatile float tiltX = 0.0f;
 volatile float tiltY = 0.0f;
+
+const char *compassString;
 
 
 uint8_t frame_buffer[SCREEN_WIDTH * SCREEN_HEIGHT / 2];
@@ -146,9 +150,13 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 static void read_level() {
 	if (BNO055_Read(&hi2c1, &orientation) == HAL_OK)
 	    {
-	        // orientation.roll_deg
-	        // orientation.pitch_deg
-	        // orientation.heading_deg
+		        // Store roll angle
+		        levelVector[0] =
+		            (int16_t)(orientation.roll_deg * 100.0f);
+
+		        // Store pitch angle
+		        levelVector[1] =
+		            (int16_t)(orientation.pitch_deg * 100.0f);
 	    }
 	//run the sensor in 9DOF fusion mode
 	//pwetty pwease enable ACC_BSX_DRDY interrupt, and clear at end of data read
@@ -167,33 +175,13 @@ static void read_heading() {
 
 static void calculate_level() {
 
-	float gx = gravityVector[0] / 100.0f;
-	float gy = gravityVector[1] / 100.0f;
-	float gz = gravityVector[2] / 100.0f;
-
-	//x-axis
-	tiltX = atan2f(gy, sqrtf(gx * gx + gz * gz))* (180.0f / 3.14159265f);
-	//y-axis
-	tiltY = atan2f(-gx, sqrtf(gy * gy * gz *gz)) *(180.0f / 3.14159265f);
-
-
-
-
-	//lowkey the sensor does most of the vector calcs by itself
-
+		tiltX = levelVector[0] / 100.0f;
+	    tiltY = levelVector[1] / 100.0f;
 }
 
 static void calculate_compass() {
 
-	// Direction values:
-	// 0 = North
-	// 1 = North-east
-	// 2 = East
-	// 3 = South-east
-	// 4 = South
-	// 5 = South-west
-	// 6 = West
-	// 7 = North-west
+
 
 
 	uint16_t Heading = headingVector[0];  //read heading
@@ -201,38 +189,39 @@ static void calculate_compass() {
 	compassHeading = Heading;
 
 
+
 	if (compassHeading >= 337.5f ||
 	        compassHeading < 22.5f)
 	    {
-	        compassDirection = 0;  // North
+	        compassString = "North";  // North
 	    }
 	    else if (compassHeading < 67.5f)
 	    {
-	        compassDirection = 1;  // North-east
+	        compassString = "North-East";  // North-east
 	    }
 	    else if (compassHeading < 112.5f)
 	    {
-	        compassDirection = 2;  // East
+	        compassString = "East";  // East
 	    }
 	    else if (compassHeading < 157.5f)
 	    {
-	        compassDirection = 3;  // South-east
+	        compassString = "South-East";  // South-east
 	    }
 	    else if (compassHeading < 202.5f)
 	    {
-	        compassDirection = 4;  // South
+	        compassString = "South";  // South
 	    }
 	    else if (compassHeading < 247.5f)
 	    {
-	        compassDirection = 5;  // South-west
+	        compassString = "South-West";  // South-west
 	    }
 	    else if (compassHeading < 292.5f)
 	    {
-	        compassDirection = 6;  // West
+	        compassString = "West";  // West
 	    }
 	    else
 	    {
-	        compassDirection = 7;  // Northwest
+	        compassString = "North-West";  // Northwest
 	    }
 
 
