@@ -19,6 +19,9 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "bno055.h"
+#include "display.h"
+#include <math.h>
+#include <string.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -229,15 +232,18 @@ static void calculate_compass() {
 }
 
 static void generate_levelframe() {
-
+	/* Use signed roll directly; levelVector currently stores unsigned values. */
+	Display_DrawLevel(frame_buffer, orientation.roll_deg);
 }
 
 static void generate_headingframe() {
-
+	Display_DrawCompass(frame_buffer, compassHeading);
 }
 
 static void update_display() {
-
+	if (Display_Update(frame_buffer) != HAL_OK) {
+		Error_Handler();
+	}
 }
 
 /* USER CODE END 0 */
@@ -278,7 +284,15 @@ int main(void)
   //MX_IWDG_Init();
   MX_SPI2_Init();
   /* USER CODE BEGIN 2 */
-
+	
+  /* Initialize the TFT after GPIO and SPI2, then show an initial level frame. */
+  if (Display_Init() != HAL_OK)
+  {
+    Error_Handler();
+  }
+  Display_DrawLevel(frame_buffer, NAN); /* No sensor reading available yet. */
+  update_display();
+	
   /* Initialize COM1 port (115200, 8 bits (7-bit data + 1 stop bit), no parity */
   BspCOMInit.BaudRate   = 115200;
   BspCOMInit.WordLength = COM_WORDLENGTH_8B;
