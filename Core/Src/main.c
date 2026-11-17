@@ -237,7 +237,7 @@ static void generate_levelframe() {
 }
 
 static void generate_headingframe() {
-	Display_DrawCompass(frame_buffer, compassHeading);
+    Display_DrawCompass(frame_buffer, orientation.heading_deg);
 }
 
 static void update_display() {
@@ -393,6 +393,19 @@ int main(void)
 				       (unsigned long)HAL_I2C_GetError(&hi2c1));
 				continue;
 			}
+            /* BEGIN DISPLAY: refresh from the successful sensor read above.
+             * This also supplies values when the sensor INT pin is inactive.
+             * Keep the existing sleep behavior; all SPI writes run in main().
+             */
+            if (!Sleep_Mode) {
+                if (Display_State == COMPASS_MODE) {
+                    generate_headingframe();
+                } else {
+                    generate_levelframe();
+                }
+                update_display();
+            }
+            /* END DISPLAY */
 			int32_t heading_cdeg = (int32_t)lroundf(orientation.heading_deg * 100.0f);
 			int32_t roll_cdeg = (int32_t)lroundf(orientation.roll_deg * 100.0f);
 			int32_t pitch_cdeg = (int32_t)lroundf(orientation.pitch_deg * 100.0f);
@@ -588,7 +601,7 @@ static void MX_SPI2_Init(void)
   hspi2.Instance = SPI2;
   hspi2.Init.Mode = SPI_MODE_MASTER;
   hspi2.Init.Direction = SPI_DIRECTION_1LINE;
-  hspi2.Init.DataSize = SPI_DATASIZE_4BIT;
+  hspi2.Init.DataSize = SPI_DATASIZE_8BIT;
   hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi2.Init.NSS = SPI_NSS_SOFT;
@@ -598,7 +611,7 @@ static void MX_SPI2_Init(void)
   hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
   hspi2.Init.CRCPolynomial = 7;
   hspi2.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
-  hspi2.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
+  hspi2.Init.NSSPMode = SPI_NSS_PULSE_DISABLE;
   if (HAL_SPI_Init(&hspi2) != HAL_OK)
   {
     Error_Handler();
