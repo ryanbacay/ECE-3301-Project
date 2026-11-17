@@ -232,7 +232,7 @@ HAL_StatusTypeDef Display_Init(void)
      * PB0 remains deselected when the default PA4 TFT CS mapping is used.
      */
     HAL_GPIO_WritePin(Display_CS_GPIO_Port,Display_CS_Pin,GPIO_PIN_SET);
-    HAL_GPIO_WritePin(Display_CSB0_GPIO_Port,Display_CSB0_Pin,GPIO_PIN_SET);
+
 
     /* Four-bit palette pixels are unrelated to SPI's bits per transfer.
      * Correct the repo's 4-bit SPI setting here, inside the new display code.

@@ -18,14 +18,13 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "bno055.h"
-#include "display.h"
-#include <math.h>
-#include <string.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "bno055.h"
+#include "display.h"
+#include <string.h>
+#include <math.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -281,7 +280,7 @@ int main(void)
   MX_CORDIC_Init();
   MX_TIM2_Init();
   MX_TIM3_Init();
-  //MX_IWDG_Init();
+  MX_IWDG_Init();
   MX_SPI2_Init();
   /* USER CODE BEGIN 2 */
 	
@@ -331,8 +330,8 @@ int main(void)
 
   /* USER CODE END 2 */
 
-  /* Do not call BSP_LED_Init here: USE_NUCLEO_64 maps the LED to PA5,
-     which shares SDA/PB7 through SB2 on the NUCLEO-G431KB. */
+  /* Initialize leds */
+  BSP_LED_Init(LED_GREEN);
 
   /* Initialize COM1 port (115200, 8 bits (7-bit data + 1 stop bit), no parity */
   BspCOMInit.BaudRate   = 115200;
@@ -601,7 +600,7 @@ static void MX_SPI2_Init(void)
   hspi2.Instance = SPI2;
   hspi2.Init.Mode = SPI_MODE_MASTER;
   hspi2.Init.Direction = SPI_DIRECTION_1LINE;
-  hspi2.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi2.Init.DataSize = SPI_DATASIZE_4BIT;
   hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi2.Init.NSS = SPI_NSS_SOFT;
@@ -611,7 +610,7 @@ static void MX_SPI2_Init(void)
   hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
   hspi2.Init.CRCPolynomial = 7;
   hspi2.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
-  hspi2.Init.NSSPMode = SPI_NSS_PULSE_DISABLE;
+  hspi2.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
   if (HAL_SPI_Init(&hspi2) != HAL_OK)
   {
     Error_Handler();
@@ -730,10 +729,10 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, OLED_RST_Pin|DC_Pin_Pin|Display_CS_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, OLED_RST_Pin|DC_Pin_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(Display_CSB0_GPIO_Port, Display_CSB0_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(Display_CS_GPIO_Port, Display_CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : OLED_RST_Pin DC_Pin_Pin */
   GPIO_InitStruct.Pin = OLED_RST_Pin|DC_Pin_Pin;
@@ -746,15 +745,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pin = Display_CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  HAL_GPIO_Init(Display_CS_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : Display_CSB0_Pin */
-  GPIO_InitStruct.Pin = Display_CSB0_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(Display_CSB0_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(Display_CS_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : User_Button_Pin */
   GPIO_InitStruct.Pin = User_Button_Pin;

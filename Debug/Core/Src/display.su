@@ -1,0 +1,13 @@
+../Core/Src/display.c:44:13:pixel	32	static
+../Core/Src/display.c:55:13:line	48	static
+../Core/Src/display.c:72:13:circle	40	static
+../Core/Src/display.c:86:13:dot	32	static
+../Core/Src/display.c:94:16:glyph_column	16	static
+../Core/Src/display.c:104:13:text	48	static
+../Core/Src/display.c:118:13:centered_text	40	static
+../Core/Src/display.c:126:13:angle_text	64	static
+../Core/Src/display.c:145:6:Display_DrawLevel	40	static
+../Core/Src/display.c:173:6:Display_DrawCompass	56	static
+../Core/Src/display.c:215:26:command	24	static
+../Core/Src/display.c:228:19:Display_Init	40	static
+../Core/Src/display.c:288:19:Display_Update	48	static
