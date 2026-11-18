@@ -2,7 +2,7 @@
 #include <math.h>
 #include <string.h>
 
-extern SPI_HandleTypeDef hspi2;
+extern SPI_HandleTypeDef hspi1;
 
 /* Palette indices stored in the existing 4-bits-per-pixel frame_buffer. */
 enum { BLACK, WHITE, CYAN, GREEN, GRAY, YELLOW };
@@ -216,10 +216,10 @@ static HAL_StatusTypeDef command(uint8_t cmd, const uint8_t *data, uint16_t coun
 {
     HAL_GPIO_WritePin(DISPLAY_TFT_CS_PORT,DISPLAY_TFT_CS_PIN,GPIO_PIN_RESET);
     HAL_GPIO_WritePin(DC_Pin_GPIO_Port,DC_Pin_Pin,GPIO_PIN_RESET);
-    HAL_StatusTypeDef result = HAL_SPI_Transmit(&hspi2,&cmd,1,100);
+    HAL_StatusTypeDef result = HAL_SPI_Transmit(&hspi1,&cmd,1,100);
     if (result == HAL_OK && count != 0U) {
         HAL_GPIO_WritePin(DC_Pin_GPIO_Port,DC_Pin_Pin,GPIO_PIN_SET);
-        result = HAL_SPI_Transmit(&hspi2,(uint8_t *)data,count,100);
+        result = HAL_SPI_Transmit(&hspi1,(uint8_t *)data,count,100);
     }
     HAL_GPIO_WritePin(DISPLAY_TFT_CS_PORT,DISPLAY_TFT_CS_PIN,GPIO_PIN_SET);
     return result;
@@ -238,9 +238,9 @@ HAL_StatusTypeDef Display_Init(void)
      * Correct the repo's 4-bit SPI setting here, inside the new display code.
      * At 170 MHz / 16, full-frame wire time is at least 87 ms (~11 FPS max).
      */
-    hspi2.Init.DataSize = SPI_DATASIZE_8BIT;
-    hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_16;
-    HAL_StatusTypeDef result = HAL_SPI_Init(&hspi2);
+    hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
+    hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_16;
+    HAL_StatusTypeDef result = HAL_SPI_Init(&hspi1);
     if (result != HAL_OK) return result;
 
     GPIO_InitTypeDef pins = {0};
@@ -299,7 +299,7 @@ HAL_StatusTypeDef Display_Update(const uint8_t *buffer)
     HAL_GPIO_WritePin(DISPLAY_TFT_CS_PORT,DISPLAY_TFT_CS_PIN,GPIO_PIN_RESET);
     HAL_GPIO_WritePin(DC_Pin_GPIO_Port,DC_Pin_Pin,GPIO_PIN_RESET);
     uint8_t ram_write = 0x2C;
-    result = HAL_SPI_Transmit(&hspi2,&ram_write,1,100);
+    result = HAL_SPI_Transmit(&hspi1,&ram_write,1,100);
     HAL_GPIO_WritePin(DC_Pin_GPIO_Port,DC_Pin_Pin,GPIO_PIN_SET);
     for (unsigned int y = 0; y < DISPLAY_HEIGHT && result == HAL_OK; y++) {
         for (unsigned int x = 0; x < DISPLAY_WIDTH; x++) {
@@ -309,7 +309,7 @@ HAL_StatusTypeDef Display_Update(const uint8_t *buffer)
             row_pixels[2U*x] = (uint8_t)(color >> 8); /* MSB first */
             row_pixels[2U*x+1U] = (uint8_t)color;
         }
-        result = HAL_SPI_Transmit(&hspi2,row_pixels,sizeof(row_pixels),100);
+        result = HAL_SPI_Transmit(&hspi1,row_pixels,sizeof(row_pixels),100);
     }
     HAL_GPIO_WritePin(DISPLAY_TFT_CS_PORT,DISPLAY_TFT_CS_PIN,GPIO_PIN_SET);
     return result;
