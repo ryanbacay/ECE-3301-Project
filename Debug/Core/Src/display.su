@@ -8,6 +8,6 @@
 ../Core/Src/display.c:126:13:angle_text	64	static
 ../Core/Src/display.c:145:6:Display_DrawLevel	40	static
 ../Core/Src/display.c:173:6:Display_DrawCompass	56	static
-../Core/Src/display.c:215:26:command	24	static
-../Core/Src/display.c:228:19:Display_Init	40	static
-../Core/Src/display.c:288:19:Display_Update	48	static
+../Core/Src/display.c:216:26:command	24	static
+../Core/Src/display.c:229:19:Display_Init	40	static
+../Core/Src/display.c:289:19:Display_Update	48	static

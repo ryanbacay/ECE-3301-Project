@@ -37,13 +37,16 @@
 #define LEVEL_MODE 0
 #define COMPASS_MODE 1
 
-#define SLEEP_TIMER 20000
-
-#define REFRESH_RATE 65 // 1/65ms ~ 15 FPS
+#define REFRESH_RATE 33 // 1/33ms ~ 30 FPS target
 
 /* BEGIN TELEMETRY: remove this block and its use in the main loop to disable. */
 #define TELEMETRY_PERIOD_MS 500U
 /* END TELEMETRY */
+
+#define CALIBRATION_HOLD_MS 5000U
+#define CALIBRATION_TIMEOUT_MS 60000U
+#define CALIBRATION_FLASH_ADDRESS 0x0801F800U
+#define CALIBRATION_FLASH_MAGIC 0x43414C31U
 
 #define SCREEN_WIDTH  240
 #define SCREEN_HEIGHT 240
@@ -72,9 +75,11 @@ TIM_HandleTypeDef htim3;
 
 /* USER CODE BEGIN PV */
 volatile uint8_t Display_State = LEVEL_MODE;
-volatile uint8_t Sleep_Mode = 0;
+volatile uint8_t User_Button_Down = 0;
+volatile uint8_t Calibration_Request = 0;
+volatile uint8_t Calibration_Hold_Handled = 0;
+volatile uint32_t User_Button_Tick = 0;
 
-volatile uint32_t Sleep_tick = 0;
 volatile uint32_t DisplayRefresh_tick = 0;
 
 
@@ -119,6 +124,10 @@ static void calculate_compass(); 	 //Brady
 static void generate_levelframe(); 	 //Ethan
 static void generate_headingframe(); //Ethan
 static void update_display();  		 //Alexander
+static uint32_t calibration_checksum(const uint8_t *profile);
+static uint8_t load_calibration_profile(uint8_t *profile);
+static HAL_StatusTypeDef save_calibration_profile(const uint8_t *profile);
+static HAL_StatusTypeDef calibrate_and_save(void);
 
 /* USER CODE END PFP */
 
@@ -126,7 +135,14 @@ static void update_display();  		 //Alexander
 /* USER CODE BEGIN 0 */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 	if (GPIO_Pin == User_Button_Pin) {
-		Display_State = !Display_State;
+		if (HAL_GPIO_ReadPin(User_Button_GPIO_Port, User_Button_Pin) == GPIO_PIN_SET) {
+			Display_State = !Display_State;
+			User_Button_Down = 1;
+			User_Button_Tick = HAL_GetTick();
+		} else {
+			User_Button_Down = 0;
+			Calibration_Hold_Handled = 0;
+		}
 	} else if (GPIO_Pin == Data_Ready_Pin) {
 		Data_Ready = 1;
 	}
@@ -137,7 +153,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	// 1 ms timer
 	if (htim->Instance == TIM2) {
 		DisplayRefresh_tick++;
-		Sleep_tick++;
 		//fill as needed
 
 	}
@@ -232,7 +247,7 @@ static void calculate_compass() {
 
 static void generate_levelframe() {
 	/* Use signed roll directly; levelVector currently stores unsigned values. */
-	Display_DrawLevel(frame_buffer, orientation.roll_deg);
+	Display_DrawLevel(frame_buffer, -orientation.roll_deg);
 }
 
 static void generate_headingframe() {
@@ -243,6 +258,84 @@ static void update_display() {
 	if (Display_Update(frame_buffer) != HAL_OK) {
 		Error_Handler();
 	}
+}
+
+static uint32_t calibration_checksum(const uint8_t *profile)
+{
+    uint32_t checksum = CALIBRATION_FLASH_MAGIC;
+    for (uint8_t i = 0; i < 22; i++)
+        checksum = (checksum << 5) - checksum + profile[i];
+    return checksum;
+}
+
+static uint8_t load_calibration_profile(uint8_t *profile)
+{
+    const uint8_t *stored = (const uint8_t *)CALIBRATION_FLASH_ADDRESS;
+    uint32_t magic;
+    uint32_t checksum;
+
+    memcpy(&magic, stored, sizeof(magic));
+    memcpy(profile, stored + 4, 22);
+    memcpy(&checksum, stored + 28, sizeof(checksum));
+    return magic == CALIBRATION_FLASH_MAGIC &&
+           checksum == calibration_checksum(profile);
+}
+
+static HAL_StatusTypeDef save_calibration_profile(const uint8_t *profile)
+{
+    uint8_t record[32] = {0};
+    uint32_t magic = CALIBRATION_FLASH_MAGIC;
+    uint32_t checksum = calibration_checksum(profile);
+    FLASH_EraseInitTypeDef erase = {0};
+    uint32_t error = 0;
+
+    memcpy(record, &magic, sizeof(magic));
+    memcpy(record + 4, profile, 22);
+    memcpy(record + 28, &checksum, sizeof(checksum));
+
+    if (HAL_FLASH_Unlock() != HAL_OK) return HAL_ERROR;
+    erase.TypeErase = FLASH_TYPEERASE_PAGES;
+    erase.Banks = FLASH_BANK_1;
+    erase.Page = FLASH_PAGE_NB - 1U;
+    erase.NbPages = 1U;
+    if (HAL_FLASHEx_Erase(&erase, &error) != HAL_OK) {
+        HAL_FLASH_Lock();
+        return HAL_ERROR;
+    }
+    for (uint32_t offset = 0; offset < sizeof(record); offset += 8U) {
+        uint64_t word;
+        memcpy(&word, record + offset, sizeof(word));
+        if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD,
+                              CALIBRATION_FLASH_ADDRESS + offset, word) != HAL_OK) {
+            HAL_FLASH_Lock();
+            return HAL_ERROR;
+        }
+    }
+    HAL_FLASH_Lock();
+    return HAL_OK;
+}
+
+static HAL_StatusTypeDef calibrate_and_save(void)
+{
+    uint8_t status = 0;
+    uint8_t profile[22];
+    uint32_t start = HAL_GetTick();
+    uint32_t report = start;
+
+    printf("Calibration started: hold sensor still, then move through six faces and a figure-eight.\r\n");
+    while (status != 0xFFU && (HAL_GetTick() - start) < CALIBRATION_TIMEOUT_MS) {
+        if (BNO055_GetCalibrationStatus(&hi2c3, &status) != HAL_OK)
+            return HAL_ERROR;
+        if ((HAL_GetTick() - report) >= 1000U) {
+            report = HAL_GetTick();
+            printf("Calibration status: 0x%02X\r\n", status);
+        }
+        HAL_Delay(100);
+    }
+    if (status != 0xFFU) return HAL_TIMEOUT;
+    if (BNO055_ReadCalibrationProfile(&hi2c3, profile) != HAL_OK)
+        return HAL_ERROR;
+    return save_calibration_profile(profile);
 }
 
 /* USER CODE END 0 */
@@ -322,6 +415,12 @@ int main(void)
       Error_Handler();
   }
   printf("BNO055 init OK\r\n");
+  uint8_t saved_calibration[22];
+  if (load_calibration_profile(saved_calibration)) {
+      if (BNO055_ApplyCalibrationProfile(&hi2c3, saved_calibration) != HAL_OK)
+          Error_Handler();
+      printf("Saved BNO055 calibration restored\r\n");
+  }
 
  // MX_IWDG_Init(); // Moved in front of BNOO055_Init to prevent watchdog reset
 
@@ -354,10 +453,20 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+		if (User_Button_Down && !Calibration_Hold_Handled &&
+		    (HAL_GetTick() - User_Button_Tick) >= CALIBRATION_HOLD_MS) {
+			Calibration_Hold_Handled = 1;
+			Calibration_Request = 1;
+		}
+		if (!User_Button_Down) Calibration_Hold_Handled = 0;
+		if (Calibration_Request) {
+			Calibration_Request = 0;
+			HAL_StatusTypeDef calibration_result = calibrate_and_save();
+			printf("Calibration %s\r\n",
+			       calibration_result == HAL_OK ? "saved" : "failed");
+		}
 
 		if (Data_Ready) {
-			Sleep_Mode = 0;
-			Sleep_tick = 0;
 			Data_Ready=0;
 			if (Display_State == LEVEL_MODE) {
 				read_level();
@@ -394,16 +503,14 @@ int main(void)
 			}
             /* BEGIN DISPLAY: refresh from the successful sensor read above.
              * This also supplies values when the sensor INT pin is inactive.
-             * Keep the existing sleep behavior; all SPI writes run in main().
+             * All SPI writes run in main().
              */
-            if (!Sleep_Mode) {
-                if (Display_State == COMPASS_MODE) {
-                    generate_headingframe();
-                } else {
-                    generate_levelframe();
-                }
-                update_display();
+            if (Display_State == COMPASS_MODE) {
+                generate_headingframe();
+            } else {
+                generate_levelframe();
             }
+            update_display();
             /* END DISPLAY */
 			int32_t heading_cdeg = (int32_t)lroundf(orientation.heading_deg * 100.0f);
 			int32_t roll_cdeg = (int32_t)lroundf(orientation.roll_deg * 100.0f);
@@ -419,12 +526,6 @@ int main(void)
 			telemetry_last_tick = HAL_GetTick();
 		}
 		/* END TELEMETRY */
-		if ((Sleep_tick >= SLEEP_TIMER) && !Sleep_Mode) {
-			Sleep_Mode = 1;
-			memset(frame_buffer, 0, sizeof(frame_buffer));
-			update_display();
-		}
-
 		//HAL_IWDG_Refresh(&hiwdg); //needs to be kicked every 250ms
 	}
 
@@ -749,7 +850,7 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin : User_Button_Pin */
   GPIO_InitStruct.Pin = User_Button_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(User_Button_GPIO_Port, &GPIO_InitStruct);
 

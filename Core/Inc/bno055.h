@@ -10,4 +10,7 @@ HAL_StatusTypeDef BNO055_Init(I2C_HandleTypeDef *bus);
 HAL_StatusTypeDef BNO055_I2C_Test(I2C_HandleTypeDef *bus, uint8_t *chip_id);
 HAL_StatusTypeDef BNO055_Read(I2C_HandleTypeDef *bus, BNO055_Data *out);
 HAL_StatusTypeDef BNO055_ClearInterrupt(I2C_HandleTypeDef *bus);
+HAL_StatusTypeDef BNO055_GetCalibrationStatus(I2C_HandleTypeDef *bus, uint8_t *status);
+HAL_StatusTypeDef BNO055_ReadCalibrationProfile(I2C_HandleTypeDef *bus, uint8_t *profile);
+HAL_StatusTypeDef BNO055_ApplyCalibrationProfile(I2C_HandleTypeDef *bus, const uint8_t *profile);
 #endif

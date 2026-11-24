@@ -198,7 +198,8 @@ void Display_DrawCompass(uint8_t *buffer, float heading_deg)
     unsigned int sector = (unsigned int)((heading_deg+22.5f)/45.0f) % 8U;
     centered_text(buffer,219,directions[sector],2,WHITE);
 
-    float radians = heading_deg * 0.01745329252f;
+    /* Counter-rotate the needle so it points toward north. */
+    float radians = -heading_deg * 0.01745329252f;
     float dx = sinf(radians), dy = -cosf(radians);
     int tip_x = (int)(120.0f + 42.0f*dx + 0.5f);
     int tip_y = (int)(142.0f + 42.0f*dy + 0.5f);
@@ -236,10 +237,10 @@ HAL_StatusTypeDef Display_Init(void)
 
     /* Four-bit palette pixels are unrelated to SPI's bits per transfer.
      * Correct the repo's 4-bit SPI setting here, inside the new display code.
-     * At 170 MHz / 16, full-frame wire time is at least 87 ms (~11 FPS max).
+     * At 170 MHz / 8, full-frame wire time is roughly 43 ms (~23 FPS max).
      */
     hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
-    hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_16;
+    hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
     HAL_StatusTypeDef result = HAL_SPI_Init(&hspi1);
     if (result != HAL_OK) return result;
 

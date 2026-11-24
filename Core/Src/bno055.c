@@ -46,6 +46,10 @@ HAL_StatusTypeDef BNO055_Init(I2C_HandleTypeDef *bus)
     if (write_reg(bus, 0x3E, 0x00) != HAL_OK)
         return HAL_ERROR;
 
+    /* Remap the sensor X/Y axes for the board's physical mounting. */
+    if (write_reg(bus, 0x41, 0x21) != HAL_OK)
+        return HAL_ERROR;
+
     // Set angle units to degrees
     if (write_reg(bus, 0x3B, 0x00) != HAL_OK)
         return HAL_ERROR;
@@ -82,7 +86,10 @@ HAL_StatusTypeDef BNO055_Read(I2C_HandleTypeDef *bus, BNO055_Data *out)
     if (read_reg(bus, 0x1A, euler, 6) != HAL_OK) return HAL_ERROR;
     if (read_reg(bus, 0x0E, mag, 6) != HAL_OK) return HAL_ERROR;
     if (read_reg(bus, 0x35, &cal, 1) != HAL_OK) return HAL_ERROR;
+    /* No additional heading offset is needed for the current mounting. */
     out->heading_deg = signed_word(euler) / 16.0f;
+    if (out->heading_deg >= 360.0f) out->heading_deg -= 360.0f;
+    if (out->heading_deg < 0.0f) out->heading_deg += 360.0f;
     out->roll_deg = signed_word(euler + 2) / 16.0f;
     out->pitch_deg = signed_word(euler + 4) / 16.0f;
     out->mag_x_uT = signed_word(mag) / 16.0f;
@@ -98,4 +105,32 @@ HAL_StatusTypeDef BNO055_ClearInterrupt(I2C_HandleTypeDef *bus)
 
     // Read INT_STA (page 0) to acknowledge interrupt
     return write_reg(bus, 0x3F, 0x40);
+}
+
+HAL_StatusTypeDef BNO055_GetCalibrationStatus(I2C_HandleTypeDef *bus, uint8_t *status)
+{
+    return read_reg(bus, 0x35, status, 1);
+}
+
+HAL_StatusTypeDef BNO055_ReadCalibrationProfile(I2C_HandleTypeDef *bus, uint8_t *profile)
+{
+    if (write_reg(bus, 0x3D, 0x00) != HAL_OK) return HAL_ERROR;
+    HAL_Delay(25);
+    HAL_StatusTypeDef result = read_reg(bus, 0x55, profile, 22);
+    if (write_reg(bus, 0x3D, 0x0C) != HAL_OK) return HAL_ERROR;
+    HAL_Delay(25);
+    return result;
+}
+
+HAL_StatusTypeDef BNO055_ApplyCalibrationProfile(I2C_HandleTypeDef *bus, const uint8_t *profile)
+{
+    if (write_reg(bus, 0x3D, 0x00) != HAL_OK) return HAL_ERROR;
+    HAL_Delay(25);
+    for (uint8_t i = 0; i < 22; i++) {
+        if (write_reg(bus, (uint8_t)(0x55U + i), profile[i]) != HAL_OK)
+            return HAL_ERROR;
+    }
+    if (write_reg(bus, 0x3D, 0x0C) != HAL_OK) return HAL_ERROR;
+    HAL_Delay(25);
+    return HAL_OK;
 }

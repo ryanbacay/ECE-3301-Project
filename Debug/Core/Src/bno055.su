@@ -3,5 +3,8 @@
 ../Core/Src/bno055.c:21:16:signed_word	16	static
 ../Core/Src/bno055.c:26:19:BNO055_I2C_Test	16	static
 ../Core/Src/bno055.c:35:19:BNO055_Init	24	static
-../Core/Src/bno055.c:78:19:BNO055_Read	40	static
-../Core/Src/bno055.c:95:19:BNO055_ClearInterrupt	16	static
+../Core/Src/bno055.c:82:19:BNO055_Read	40	static
+../Core/Src/bno055.c:102:19:BNO055_ClearInterrupt	16	static
+../Core/Src/bno055.c:110:19:BNO055_GetCalibrationStatus	16	static
+../Core/Src/bno055.c:115:19:BNO055_ReadCalibrationProfile	24	static
+../Core/Src/bno055.c:125:19:BNO055_ApplyCalibrationProfile	24	static
